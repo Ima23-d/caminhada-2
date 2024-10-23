@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Caminhada</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #03B403;
+            overflow-x: hidden;
+        }
+
+        .container {
+            text-align: center;
+            background-color: #ffffff;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0px 10px 20px black;
+            max-width: 400px;
+            width: 100%;
+        }
+
+        h1 {
+            color: #333;
+            font-size: 24px;
+            margin-bottom: 20px;
+        }
+
+        p {
+            font-size: 18px;
+            color: #555;
+            margin-bottom: 10px;
+        }
+
+        .button {
+            display: inline-block;
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 10px;
+            font-size: 18px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            margin-top: 20px;
+        }
+
+        .button:hover {
+            background-color: #45a049;
+        }
+
+        #status {
+            margin-top: 20px;
+            color: #888;
+            font-size: 16px;
+        }
+
+        #distance {
+            font-weight: bold;
+            font-size: 20px;
+            margin-top: 10px;
+            color: #333;
+        }
+        .mapa {
+            padding: 10px 20px;
+            background-color: black;
+            color: white;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Rastreamento de Caminhada</h1>
+    <p id="status">Clique no botão para iniciar o rastreamento.</p>
+    <p id="distance">Distância percorrida: 0 km</p>
+    <button class="button" id="toggleBtn">Iniciar Caminhada</button>
+    <a href="mapa.html"> 
+        <button class="mapa">Abrir mapa</button>
+    </a>
+</div>
+
+<script>
+    let coords = [];
+    let totalDistance = 0;
+    let watchId;
+    let isTracking = false; // Variável para controlar o estado de rastreamento
+
+    // Função para calcular a distância entre dois pontos usando a fórmula de Haversine
+    function calculateDistance(lat1, lon1, lat2, lon2) {
+        const R = 6371; // Raio da Terra em km
+        const dLat = (lat2 - lat1) * Math.PI / 180;
+        const dLon = (lon2 - lon1) * Math.PI / 180;
+        const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                  Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                  Math.sin(dLon / 2) * Math.sin(dLon / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return R * c; // Distância em km
+    }
+
+    // Função para rastrear a posição e calcular a distância
+    function success(position) {
+        const latitude = position.coords.latitude;
+        const longitude = position.coords.longitude;
+        const currentPos = [latitude, longitude];
+
+        // Salva a primeira coordenada e depois começa a calcular a distância
+        if (coords.length > 0) {
+            const lastPos = coords[coords.length - 1];
+            const distance = calculateDistance(lastPos[0], lastPos[1], latitude, longitude);
+            totalDistance += distance;
+            document.getElementById('distance').innerText = `Distância percorrida: ${totalDistance.toFixed(2)} km`;
+        }
+
+        // Adiciona a nova coordenada ao array de coordenadas
+        coords.push(currentPos);
+
+        // Atualiza o status
+        document.getElementById('status').innerText = `Posição atual: Latitude ${latitude}, Longitude ${longitude}`;
+
+        // Salva a rota e a distância no localStorage
+        localStorage.setItem('route', JSON.stringify(coords));
+        localStorage.setItem('distance', totalDistance.toFixed(2)); // Salva a distância total em km
+    }
+
+    function error(err) {
+        console.warn(`ERRO(${err.code}): ${err.message}`);
+        document.getElementById('status').innerText = "Erro ao obter localização.";
+    }
+
+    // Função para iniciar o rastreamento
+    function toggleTracking() {
+        if (isTracking) {
+            // Parar o rastreamento
+            navigator.geolocation.clearWatch(watchId);
+            document.getElementById('status').innerText = "Rastreamento parado.";
+            document.getElementById('toggleBtn').innerText = "Iniciar Caminhada"; // Muda o texto do botão
+            isTracking = false;
+        } else {
+            // Iniciar o rastreamento
+            if (navigator.geolocation) {
+                watchId = navigator.geolocation.watchPosition(success, error, {
+                    enableHighAccuracy: true,
+                    maximumAge: 1000,
+                    timeout: 5000
+                });
+                document.getElementById('status').innerText = "Rastreamento iniciado...";
+                document.getElementById('toggleBtn').innerText = "Parar Caminhada"; // Muda o texto do botão
+                isTracking = true;
+            } else {
+                alert('Geolocalização não suportada neste navegador.');
+            }
+        }
+    }
+
+    // Adicionando evento ao botão para alternar rastreamento
+    document.getElementById('toggleBtn').addEventListener('click', toggleTracking);
+</script>
+
+</body>
+</html>
